@@ -14,11 +14,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
-
-interface DashboardHeaderProps {
-  title: string
-  breadcrumbs?: { label: string; href?: string }[]
-}
+import type { DashboardHeaderProps } from "@/types/dashboard"
 
 export function DashboardHeader({ title, breadcrumbs }: DashboardHeaderProps) {
   const { theme, setTheme } = useTheme()

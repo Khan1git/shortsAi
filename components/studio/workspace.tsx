@@ -37,19 +37,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
-
-type StudioTab = "image" | "video"
-
-interface GeneratedVideo {
-  id: string
-  title: string
-  prompt: string
-  duration: string
-  size: string
-  status: "rendering" | "completed" | "failed"
-  createdAt: string
-  thumbnailColor: string
-}
+import type { StudioTab, GeneratedVideo } from "@/types/studio"
 
 const demoVideos: GeneratedVideo[] = [
   {

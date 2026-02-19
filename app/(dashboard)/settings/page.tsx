@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useSearchParams } from "next/navigation"
 import {
   Key,
@@ -9,14 +9,9 @@ import {
   HardDrive,
   Users,
   Server,
-  Eye,
-  EyeOff,
-  CheckCircle2,
-  XCircle,
   AlertTriangle,
   Trash2,
   Plus,
-  Loader2,
 } from "lucide-react"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -37,39 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-
-function APIKeyInput({ label, placeholder, hasValue }: { label: string; placeholder: string; hasValue: boolean }) {
-  const [visible, setVisible] = useState(false)
-  return (
-    <div className="space-y-2">
-      <Label>{label}</Label>
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Input
-            type={visible ? "text" : "password"}
-            placeholder={placeholder}
-            defaultValue={hasValue ? "sk-xxxxxxxxxxxxxxxxxxxxxxxx" : ""}
-          />
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute right-0 top-0 h-full px-3"
-            onClick={() => setVisible(!visible)}
-          >
-            {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-            <span className="sr-only">Toggle visibility</span>
-          </Button>
-        </div>
-        {hasValue && (
-          <Badge variant="outline" className="gap-1 text-success border-success/30 shrink-0 self-center">
-            <CheckCircle2 className="size-3" />
-            Set
-          </Badge>
-        )}
-      </div>
-    </div>
-  )
-}
+import { APIKeysCard, PlatformConnectionsCard } from "@/components/settings"
 
 const teamMembers = [
   { name: "John Doe", email: "john@clipforge.ai", role: "Owner", initials: "JD" },
@@ -85,35 +48,9 @@ const roleColors: Record<string, string> = {
   Viewer: "outline",
 }
 
-type Integration = { platform: string; channelTitle: string | null; channelThumbnail: string | null; connectedAt: string }
-
 export default function SettingsPage() {
   const searchParams = useSearchParams()
-  const [integrations, setIntegrations] = useState<Integration[]>([])
-  const [integrationsLoading, setIntegrationsLoading] = useState(true)
-  const [disconnecting, setDisconnecting] = useState<string | null>(null)
   const youtubeStatus = searchParams.get("youtube")
-  const youtubeMessage = searchParams.get("message")
-
-  useEffect(() => {
-    let cancelled = false
-    async function fetchIntegrations() {
-      try {
-        const res = await fetch("/api/integrations")
-        if (!res.ok || cancelled) return
-        const data = await res.json()
-        if (!cancelled) setIntegrations(data.connections ?? [])
-      } catch {
-        if (!cancelled) setIntegrations([])
-      } finally {
-        if (!cancelled) setIntegrationsLoading(false)
-      }
-    }
-    fetchIntegrations()
-    return () => { cancelled = true }
-  }, [])
-
-  const youtube = integrations.find((c) => c.platform === "youtube")
   const [activeTab, setActiveTab] = useState(youtubeStatus ? "platforms" : "api-keys")
 
   return (
@@ -153,120 +90,14 @@ export default function SettingsPage() {
             </TabsTrigger>
           </TabsList>
 
-          {/* API Keys Tab */}
           <TabsContent value="api-keys" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-foreground">API Keys</CardTitle>
-                <CardDescription>Manage your service API keys for video generation</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <APIKeyInput label="OpenAI API Key" placeholder="sk-..." hasValue={true} />
-                <APIKeyInput label="Image Generation API Key" placeholder="Enter your image generation key" hasValue={true} />
-                <APIKeyInput label="Voice Synthesis API Key" placeholder="Enter your voice synthesis key" hasValue={false} />
-                <APIKeyInput label="Video Rendering API Key" placeholder="Enter your rendering key" hasValue={true} />
-                <div className="flex justify-end">
-                  <Button>Save API Keys</Button>
-                </div>
-              </CardContent>
-            </Card>
+            <APIKeysCard />
           </TabsContent>
 
-          {/* Platforms Tab */}
           <TabsContent value="platforms" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-foreground">Platform Connections</CardTitle>
-                <CardDescription>Connect your social media accounts via OAuth</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {youtubeStatus === "connected" && (
-                  <div className="rounded-md bg-success/10 px-3 py-2 text-sm text-success">
-                    YouTube connected successfully.
-                  </div>
-                )}
-                {youtubeStatus === "error" && youtubeMessage && (
-                  <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                    {decodeURIComponent(youtubeMessage)}
-                  </div>
-                )}
-                {[
-                  {
-                    id: "youtube",
-                    name: "YouTube",
-                    connected: !!youtube,
-                    handle: youtube?.channelTitle ?? null,
-                    thumbnail: youtube?.channelThumbnail,
-                  },
-                  { id: "tiktok", name: "TikTok", connected: false, handle: null, thumbnail: null },
-                  { id: "instagram", name: "Instagram", connected: false, handle: null, thumbnail: null },
-                  { id: "facebook", name: "Facebook", connected: false, handle: null, thumbnail: null },
-                ].map((platform) => (
-                  <div key={platform.id} className="flex items-center justify-between p-3 rounded-lg border border-border">
-                    <div className="flex items-center gap-3">
-                      {platform.connected ? (
-                        <CheckCircle2 className="size-5 text-success shrink-0" />
-                      ) : (
-                        <XCircle className="size-5 text-muted-foreground shrink-0" />
-                      )}
-                      {platform.thumbnail && (
-                        <img
-                          src={platform.thumbnail}
-                          alt=""
-                          className="size-10 rounded-full object-cover"
-                        />
-                      )}
-                      <div>
-                        <p className="text-sm font-medium text-foreground">{platform.name}</p>
-                        {platform.handle && (
-                          <p className="text-xs text-muted-foreground">{platform.handle}</p>
-                        )}
-                      </div>
-                    </div>
-                    {platform.id === "youtube" ? (
-                      <Button
-                        variant={platform.connected ? "outline" : "default"}
-                        size="sm"
-                        disabled={disconnecting === "youtube"}
-                        onClick={async () => {
-                          if (platform.connected) {
-                            setDisconnecting("youtube")
-                            try {
-                              await fetch("/api/integrations/youtube/disconnect", { method: "POST" })
-                              setIntegrations((prev) => prev.filter((c) => c.platform !== "youtube"))
-                            } finally {
-                              setDisconnecting(null)
-                            }
-                          } else {
-                            window.location.href = "/api/integrations/youtube/connect"
-                          }
-                        }}
-                      >
-                        {disconnecting === "youtube" ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : platform.connected ? (
-                          "Disconnect"
-                        ) : (
-                          "Connect"
-                        )}
-                      </Button>
-                    ) : (
-                      <Button variant="outline" size="sm" disabled>
-                        Coming soon
-                      </Button>
-                    )}
-                  </div>
-                ))}
-                {integrationsLoading && (
-                  <p className="text-xs text-muted-foreground flex items-center gap-2">
-                    <Loader2 className="size-4 animate-spin" /> Loading connections…
-                  </p>
-                )}
-              </CardContent>
-            </Card>
+            <PlatformConnectionsCard />
           </TabsContent>
 
-          {/* Defaults Tab */}
           <TabsContent value="defaults" className="mt-6">
             <Card>
               <CardHeader>
@@ -312,9 +143,7 @@ export default function SettingsPage() {
                     </Select>
                   </div>
                 </div>
-
                 <Separator />
-
                 <div className="flex items-center justify-between">
                   <div>
                     <Label>Auto-Publish</Label>
@@ -322,7 +151,6 @@ export default function SettingsPage() {
                   </div>
                   <Switch defaultChecked />
                 </div>
-
                 <div className="space-y-3">
                   <Label>Default Platforms</Label>
                   {["TikTok", "Instagram Reels", "YouTube Shorts", "Facebook"].map((p) => (
@@ -332,7 +160,6 @@ export default function SettingsPage() {
                     </div>
                   ))}
                 </div>
-
                 <div className="flex justify-end">
                   <Button>Save Defaults</Button>
                 </div>
@@ -340,7 +167,6 @@ export default function SettingsPage() {
             </Card>
           </TabsContent>
 
-          {/* Storage Tab */}
           <TabsContent value="storage" className="mt-6">
             <Card>
               <CardHeader>
@@ -366,7 +192,6 @@ export default function SettingsPage() {
                     <Input defaultValue="clipforge-media-prod" />
                   </div>
                 </div>
-
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label>Storage Used</Label>
@@ -375,9 +200,7 @@ export default function SettingsPage() {
                   <Progress value={28} className="h-2" />
                   <p className="text-xs text-muted-foreground">28% of storage used</p>
                 </div>
-
                 <Separator />
-
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-foreground">Cleanup Old Assets</p>
@@ -389,7 +212,6 @@ export default function SettingsPage() {
             </Card>
           </TabsContent>
 
-          {/* Team Tab */}
           <TabsContent value="team" className="mt-6">
             <Card>
               <CardHeader>
@@ -425,7 +247,6 @@ export default function SettingsPage() {
             </Card>
           </TabsContent>
 
-          {/* System Tab */}
           <TabsContent value="system" className="mt-6 space-y-6">
             <Card>
               <CardHeader>
@@ -451,7 +272,6 @@ export default function SettingsPage() {
                     <p className="text-xs text-muted-foreground">Simultaneous render jobs</p>
                   </div>
                 </div>
-
                 <div className="flex items-center justify-between">
                   <div>
                     <Label>Debug Logs</Label>
@@ -461,7 +281,6 @@ export default function SettingsPage() {
                 </div>
               </CardContent>
             </Card>
-
             <Card className="border-destructive/30">
               <CardHeader>
                 <CardTitle className="text-destructive flex items-center gap-2">
