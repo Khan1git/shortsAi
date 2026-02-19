@@ -14,6 +14,7 @@ import {
   Trash2,
   Download,
   Loader2,
+  ImageIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -37,7 +38,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 
-type StudioTab = "create" | "edit"
+type StudioTab = "image" | "video"
 
 interface GeneratedVideo {
   id: string
@@ -153,7 +154,7 @@ function StatusBadge({ status }: { status: GeneratedVideo["status"] }) {
 }
 
 export function StudioWorkspace() {
-  const [activeTab, setActiveTab] = useState<StudioTab>("create")
+  const [activeTab, setActiveTab] = useState<StudioTab>("image")
   const [prompt, setPrompt] = useState("")
   const [duration, setDuration] = useState([30])
   const [isGenerating, setIsGenerating] = useState(false)
@@ -172,38 +173,67 @@ export function StudioWorkspace() {
         <div className="flex border-b border-border">
           <button
             type="button"
-            onClick={() => setActiveTab("create")}
+            onClick={() => setActiveTab("image")}
             className={cn(
               "flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-colors",
-              activeTab === "create"
+              activeTab === "image"
+                ? "text-primary border-b-2 border-primary bg-accent/50"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+            )}
+          >
+            <ImageIcon className="size-4" />
+            Generate Image
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("video")}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-colors",
+              activeTab === "video"
                 ? "text-primary border-b-2 border-primary bg-accent/50"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
             )}
           >
             <Video className="size-4" />
-            Create Video
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("edit")}
-            className={cn(
-              "flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-colors",
-              activeTab === "edit"
-                ? "text-primary border-b-2 border-primary bg-accent/50"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-            )}
-          >
-            <Pencil className="size-4" />
-            Edit Video
+            Make Video
           </button>
         </div>
 
         {/* Sidebar content */}
         <ScrollArea className="flex-1">
           <div className="p-4 space-y-5">
-            {activeTab === "create" ? (
+            {activeTab === "image" ? (
               <>
-                {/* Prompt */}
+                {/* Image Prompt */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Prompt
+                  </Label>
+                  <Textarea
+                    placeholder="Describe the image you want to generate... e.g. 'Ultra-wide shot of a futuristic city at sunset, vibrant, cinematic lighting'"
+                    className="min-h-[120px] resize-none text-sm"
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                  />
+                </div>
+
+                <Separator />
+
+                {/* Image Size */}
+                <div className="space-y-3">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Image Size
+                  </Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {sizeOptions.map((size) => (
+                      <SizeButton key={size.value} size={size} />
+                    ))}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Video Prompt */}
                 <div className="space-y-2">
                   <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Prompt
@@ -299,17 +329,6 @@ export function StudioWorkspace() {
                   </Select>
                 </div>
               </>
-            ) : (
-              /* Edit Tab Content */
-              <div className="space-y-4">
-                <div className="rounded-lg border border-dashed border-border p-8 text-center">
-                  <Pencil className="mx-auto size-8 text-muted-foreground/50 mb-3" />
-                  <p className="text-sm text-muted-foreground">
-                    Select a video from the gallery to edit its script, images, voice, or
-                    timing.
-                  </p>
-                </div>
-              </div>
             )}
           </div>
         </ScrollArea>
@@ -319,7 +338,7 @@ export function StudioWorkspace() {
           <Button
             className="w-full"
             size="lg"
-            disabled={activeTab === "create" && !prompt.trim()}
+            disabled={!prompt.trim()}
             onClick={handleGenerate}
           >
             {isGenerating ? (
@@ -330,7 +349,7 @@ export function StudioWorkspace() {
             ) : (
               <>
                 <Sparkles className="mr-2 size-4" />
-                Generate Video
+                {activeTab === "image" ? "Generate Image" : "Generate Video"}
               </>
             )}
           </Button>

@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { signOut, useSession } from "next-auth/react"
 import {
   LayoutDashboard,
   Wand2,
@@ -14,6 +15,7 @@ import {
   Share2,
   Settings,
   Sparkles,
+  LogOut,
 } from "lucide-react"
 
 import {
@@ -30,6 +32,12 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 const mainNav = [
   { title: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -52,6 +60,11 @@ const systemNav = [
 
 export function AppSidebar() {
   const pathname = usePathname()
+  const { data: session } = useSession()
+  const user = session?.user
+  const initials = user?.name
+    ? user.name.split(/\s+/).map((n) => n[0]).slice(0, 2).join("").toUpperCase()
+    : user?.email?.[0]?.toUpperCase() ?? "?"
 
   return (
     <Sidebar collapsible="icon">
@@ -144,17 +157,34 @@ export function AppSidebar() {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" tooltip="Account">
-              <Avatar className="size-8">
-                <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-                  JD
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex flex-col gap-0.5 leading-none">
-                <span className="text-sm font-medium text-foreground">John Doe</span>
-                <span className="text-xs text-muted-foreground">Pro Plan</span>
-              </div>
-            </SidebarMenuButton>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton size="lg" tooltip="Account">
+                  <Avatar className="size-8">
+                    <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col gap-0.5 leading-none text-left">
+                    <span className="text-sm font-medium text-foreground">
+                      {user?.name ?? user?.email ?? "Account"}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {user?.name ? user?.email : "Signed in"}
+                    </span>
+                  </div>
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="right" sideOffset={8} align="end" className="w-56">
+                <DropdownMenuItem
+                  onClick={() => signOut({ callbackUrl: "/login" })}
+                  className="cursor-pointer text-destructive focus:text-destructive"
+                >
+                  <LogOut className="mr-2 size-4" />
+                  Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>

@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import {
   Key,
   Share2,
@@ -15,6 +16,7 @@ import {
   AlertTriangle,
   Trash2,
   Plus,
+  Loader2,
 } from "lucide-react"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -83,7 +85,37 @@ const roleColors: Record<string, string> = {
   Viewer: "outline",
 }
 
+type Integration = { platform: string; channelTitle: string | null; channelThumbnail: string | null; connectedAt: string }
+
 export default function SettingsPage() {
+  const searchParams = useSearchParams()
+  const [integrations, setIntegrations] = useState<Integration[]>([])
+  const [integrationsLoading, setIntegrationsLoading] = useState(true)
+  const [disconnecting, setDisconnecting] = useState<string | null>(null)
+  const youtubeStatus = searchParams.get("youtube")
+  const youtubeMessage = searchParams.get("message")
+
+  useEffect(() => {
+    let cancelled = false
+    async function fetchIntegrations() {
+      try {
+        const res = await fetch("/api/integrations")
+        if (!res.ok || cancelled) return
+        const data = await res.json()
+        if (!cancelled) setIntegrations(data.connections ?? [])
+      } catch {
+        if (!cancelled) setIntegrations([])
+      } finally {
+        if (!cancelled) setIntegrationsLoading(false)
+      }
+    }
+    fetchIntegrations()
+    return () => { cancelled = true }
+  }, [])
+
+  const youtube = integrations.find((c) => c.platform === "youtube")
+  const [activeTab, setActiveTab] = useState(youtubeStatus ? "platforms" : "api-keys")
+
   return (
     <>
       <DashboardHeader title="Settings" breadcrumbs={[{ label: "Settings" }]} />
@@ -93,7 +125,7 @@ export default function SettingsPage() {
           <p className="text-sm text-muted-foreground">Central configuration hub</p>
         </div>
 
-        <Tabs defaultValue="api-keys">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6">
             <TabsTrigger value="api-keys" className="gap-1.5 text-xs">
               <Key className="size-3.5 hidden sm:block" />
@@ -148,18 +180,41 @@ export default function SettingsPage() {
                 <CardDescription>Connect your social media accounts via OAuth</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {youtubeStatus === "connected" && (
+                  <div className="rounded-md bg-success/10 px-3 py-2 text-sm text-success">
+                    YouTube connected successfully.
+                  </div>
+                )}
+                {youtubeStatus === "error" && youtubeMessage && (
+                  <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                    {decodeURIComponent(youtubeMessage)}
+                  </div>
+                )}
                 {[
-                  { name: "TikTok", connected: true, handle: "@clipforge_ai" },
-                  { name: "Instagram", connected: true, handle: "@clipforge.studio" },
-                  { name: "YouTube", connected: true, handle: "ClipForge AI" },
-                  { name: "Facebook", connected: false, handle: null },
+                  {
+                    id: "youtube",
+                    name: "YouTube",
+                    connected: !!youtube,
+                    handle: youtube?.channelTitle ?? null,
+                    thumbnail: youtube?.channelThumbnail,
+                  },
+                  { id: "tiktok", name: "TikTok", connected: false, handle: null, thumbnail: null },
+                  { id: "instagram", name: "Instagram", connected: false, handle: null, thumbnail: null },
+                  { id: "facebook", name: "Facebook", connected: false, handle: null, thumbnail: null },
                 ].map((platform) => (
-                  <div key={platform.name} className="flex items-center justify-between p-3 rounded-lg border border-border">
+                  <div key={platform.id} className="flex items-center justify-between p-3 rounded-lg border border-border">
                     <div className="flex items-center gap-3">
                       {platform.connected ? (
-                        <CheckCircle2 className="size-5 text-success" />
+                        <CheckCircle2 className="size-5 text-success shrink-0" />
                       ) : (
-                        <XCircle className="size-5 text-muted-foreground" />
+                        <XCircle className="size-5 text-muted-foreground shrink-0" />
+                      )}
+                      {platform.thumbnail && (
+                        <img
+                          src={platform.thumbnail}
+                          alt=""
+                          className="size-10 rounded-full object-cover"
+                        />
                       )}
                       <div>
                         <p className="text-sm font-medium text-foreground">{platform.name}</p>
@@ -168,11 +223,45 @@ export default function SettingsPage() {
                         )}
                       </div>
                     </div>
-                    <Button variant={platform.connected ? "outline" : "default"} size="sm">
-                      {platform.connected ? "Disconnect" : "Connect"}
-                    </Button>
+                    {platform.id === "youtube" ? (
+                      <Button
+                        variant={platform.connected ? "outline" : "default"}
+                        size="sm"
+                        disabled={disconnecting === "youtube"}
+                        onClick={async () => {
+                          if (platform.connected) {
+                            setDisconnecting("youtube")
+                            try {
+                              await fetch("/api/integrations/youtube/disconnect", { method: "POST" })
+                              setIntegrations((prev) => prev.filter((c) => c.platform !== "youtube"))
+                            } finally {
+                              setDisconnecting(null)
+                            }
+                          } else {
+                            window.location.href = "/api/integrations/youtube/connect"
+                          }
+                        }}
+                      >
+                        {disconnecting === "youtube" ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : platform.connected ? (
+                          "Disconnect"
+                        ) : (
+                          "Connect"
+                        )}
+                      </Button>
+                    ) : (
+                      <Button variant="outline" size="sm" disabled>
+                        Coming soon
+                      </Button>
+                    )}
                   </div>
                 ))}
+                {integrationsLoading && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-2">
+                    <Loader2 className="size-4 animate-spin" /> Loading connections…
+                  </p>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
